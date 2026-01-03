@@ -1,10 +1,12 @@
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Router } from './components/Router';
-import { Login } from './pages/Login';
-import { Signup } from './pages/Signup';
-import { Dashboard } from './pages/Dashboard';
 import { Analytics } from './pages/Analytics';
+import { Dashboard } from './pages/Dashboard';
+import LandingPage from './pages/LandingPage';
+import LinkedInCallback from './pages/LinkedInCallback';
+import { Login } from './pages/Login';
 import { Settings } from './pages/Settings';
+import { Signup } from './pages/Signup';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
@@ -17,35 +19,36 @@ const AppContent = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <Router
-        routes={[
-          { path: '/login', component: <Login /> },
-          { path: '/signup', component: <Signup /> },
-          { path: '/', component: <Login /> },
-        ]}
-      />
-    );
-  }
-
   return (
-    <Router
-      routes={[
-        { path: '/dashboard', component: <Dashboard /> },
-        { path: '/analytics', component: <Analytics /> },
-        { path: '/settings', component: <Settings /> },
-        { path: '/', component: <Dashboard /> },
-      ]}
-    />
+    <Routes>
+      {/* Public */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+
+      {/* Protected */}
+      {user ? (
+        <>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/settings" element={<Settings />} />
+        </>
+      ) : (
+        <Route path="*" element={<Navigate to="/" replace />} />
+      )}
+    </Routes>
   );
 };
 
+
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 

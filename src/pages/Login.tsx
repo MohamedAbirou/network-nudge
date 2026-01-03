@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { Link } from '../components/Link';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,6 +21,7 @@ export const Login = () => {
     }
 
     setLoading(false);
+    window.location.replace('/dashboard')
   };
 
   const handleGoogleSignIn = async () => {

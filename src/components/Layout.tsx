@@ -1,5 +1,5 @@
+import { Home, LogOut, Menu, Settings, TrendingUp, X } from 'lucide-react';
 import { ReactNode, useState } from 'react';
-import { Home, TrendingUp, Settings, LogOut, Menu, X, Bell, Linkedin } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from './Link';
 

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { Bell, Check, CreditCard, Linkedin, Sparkles, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, Subscription } from '../lib/supabase';
 import { generateNudges } from '../lib/api';
-import { Linkedin, Bell, User, CreditCard, Sparkles, Check } from 'lucide-react';
+import { Subscription, supabase } from '../lib/supabase';
 
 export const Settings = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -146,8 +146,6 @@ export const Settings = () => {
   const handleUpgrade = async (planType: string) => {
     try {
       setLoading(true);
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`,
@@ -155,7 +153,7 @@ export const Settings = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ userId: user?.id, planType }),
         }

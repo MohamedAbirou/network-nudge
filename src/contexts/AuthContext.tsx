@@ -1,17 +1,34 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { AuthError, Session, User } from '@supabase/supabase-js';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase, UserProfile } from '../lib/supabase';
+
+interface LinkedInTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  token_type: string;
+}
+
+interface UserConsents {
+  linkedin_data_storage: boolean;
+  marketing_emails: boolean;
+  analytics_tracking: boolean;
+}
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
+  linkedInConnected: boolean;
+  userConsents: UserConsents | null;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshLinkedInStatus: () => Promise<void>;
+  loadUserConsents: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [linkedInConnected, setLinkedInConnected] = useState(false);
+  const [userConsents, setUserConsents] = useState<UserConsents | null>(null);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -52,12 +71,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshLinkedInStatus = async () => {
+    if (user) {
+      try {
+        const { data: credentials } = await supabase
+          .from('user_credentials')
+          .select('linkedin_tokens')
+          .eq('user_id', user.id)
+          .single();
+
+        setLinkedInConnected(!!credentials?.linkedin_tokens);
+      } catch (error) {
+        console.error('Error checking LinkedIn status:', error);
+        setLinkedInConnected(false);
+      }
+    }
+  };
+
+  const loadUserConsents = async () => {
+    if (user) {
+      try {
+        const { data: consents } = await supabase
+          .from('user_consents')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (consents) {
+          setUserConsents({
+            linkedin_data_storage: consents.linkedin_data_storage,
+            marketing_emails: consents.marketing_emails,
+            analytics_tracking: consents.analytics_tracking,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user consents:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
+        refreshLinkedInStatus();
+        loadUserConsents();
       }
       setLoading(false);
     });
@@ -67,8 +127,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
+        refreshLinkedInStatus();
+        loadUserConsents();
       } else {
         setProfile(null);
+        setLinkedInConnected(false);
+        setUserConsents(null);
       }
       setLoading(false);
     });
@@ -99,6 +163,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           plan_type: 'free',
           status: 'active',
           nudges_limit: 5,
+        });
+
+        // Create default team
+        await supabase.from('teams').insert({
+          owner_id: data.user.id,
+          name: 'Personal',
+          subscription_plan: 'free',
+          max_seats: 1,
+          current_seats: 1,
         });
       }
     }
@@ -135,11 +208,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         session,
         loading,
+        linkedInConnected,
+        userConsents,
         signUp,
         signIn,
         signInWithGoogle,
         signOut,
         refreshProfile,
+        refreshLinkedInStatus,
+        loadUserConsents,
       }}
     >
       {children}
